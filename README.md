@@ -1,5 +1,4 @@
 # LACART
-# LACART
 
 Lookahead CBF-CLF safety filter for unicycle robots.
 Team LACART: Pedro Lopes, Amit Shivam, Luís Tiago Paiva
