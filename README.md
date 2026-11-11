@@ -12,3 +12,23 @@ You can change the lookahead ℓ, margin and CBF gain α and watch the robot's p
 Note: this is an illustrative browser re-implementation of the controller.
 It has no CLF slack, no track-limit barriers, no vision delay and no body model,
 so lap times and clearances differ from the reported simulation and hardware results.
+
+## Citation
+
+If you use this demo or the method, please cite:
+
+Pedro Lopes, Amit Shivam, Luís Tiago Paiva.
+LACART: Lookahead-Augmented Collision Avoidance and Reference Tracking
+Strategies for Safety-Critical Robots. arXiv:2611.09640, 2026.
+https://arxiv.org/abs/2611.09640
+
+@misc{lopes2026lacart,
+  title         = {{LACART}: Lookahead-Augmented Collision Avoidance and Reference Tracking Strategies for Safety-Critical Robots},
+  author        = {Lopes, Pedro and Shivam, Amit and Paiva, Lu{\'\i}s Tiago},
+  year          = {2026},
+  eprint        = {2611.09640},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.RO},
+  doi           = {10.48550/arXiv.2611.09640},
+  url           = {https://arxiv.org/abs/2611.09640}
+}
