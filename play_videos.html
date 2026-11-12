@@ -1,1 +1,31 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LACART animation backups</title><style>body{margin:0;background:#0b183e;color:#fff;font:18px system-ui,sans-serif}main{max-width:1250px;margin:30px auto;padding:0 22px}h1{color:#f8c947}nav{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}button{background:#f8c947;color:#0b183e;border:0;padding:12px 18px;cursor:pointer;font:inherit}video{width:100%;max-height:70vh;background:#0b183e}p{line-height:1.5;color:#acb9d2}</style><main><h1>LACART: click-to-play animation backups</h1><nav><button onclick="choose('A')">A: lookahead motion</button><button onclick="choose('B')">B: CBF controls</button><button onclick="choose('C')">C: closed loop</button></nav><video id="v" controls preload="metadata" src="media/anim_A.mp4"></video><p id="caption">A: schematic unicycle motion. Every label and equation is typeset in LaTeX.</p><p>These clips are analytical illustrations or a new illustrative simulation. They are not hardware videos. No network connection is required.</p></main><script>function choose(n){const v=document.getElementById('v');v.pause();v.src='media/anim_'+n+'.mp4';v.load();document.getElementById('caption').textContent=({A:'A: schematic unicycle motion. Every label and equation is typeset in LaTeX.',B:'B: a local CBF half-plane with bounded controls. No CLF or track constraints.',C:'C: identical reference, nominal controller and bounds. Only lookahead changes. Safety-only QP. Simulated time runs at twice playback speed.'})[n];}</script></html>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LACART | Animation clips</title><style>
+*{box-sizing:border-box}body{margin:0;background:#0b183e;color:#fff;font:17px/1.5 system-ui,sans-serif}
+main{max-width:1100px;margin:auto;padding:24px 4vw 40px}h1{margin:0 0 4px;color:#f8c947;font-size:28px}
+.sub{color:#acb9d2;margin:0 0 18px}
+nav{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+nav button{flex:1;min-width:150px;background:#1a2a58;color:#fff;border:2px solid #1a2a58;border-radius:6px;padding:12px;font:inherit;font-weight:600;cursor:pointer}
+nav button.on{background:#f8c947;color:#0b183e;border-color:#f8c947}
+video{width:100%;max-height:68vh;background:#000;border-radius:6px}
+h2{margin:14px 0 4px;font-size:20px;color:#f8c947}p{margin:4px 0;color:#d4dcee}
+.look{color:#a5dad4}.note{font-size:14px;color:#acb9d2;margin-top:16px;border-top:1px solid #243468;padding-top:10px}
+a{color:#a5dad4}
+</style>
+<main>
+<h1>LACART: three short animations</h1>
+<p class="sub">Each clip explains one step of the idea. They are teaching illustrations, not measured data.</p>
+<nav id="tabs"><button class="on" data-n="A">1. Where the lookahead point moves</button><button data-n="B">2. How steering enters the safety rule</button><button data-n="C">3. With and without lookahead</button></nav>
+<video id="v" controls preload="metadata" src="media/anim_A.mp4"></video>
+<h2 id="t"></h2><p id="d"></p><p class="look" id="l"></p>
+<p class="note">All three clips are schematic simulations made for this talk. They are not hardware videos and use no experimental data. They play offline from the folder. <a href="index.html">Open the interactive page</a>.</p>
+</main>
+<script>
+const C={
+A:{t:'How the lookahead point moves',d:'The robot axle (white dot) drives forward. The lookahead point (gold dot) sits a fixed distance ahead of it. When the robot turns, that point also moves sideways.',l:'Look for: the teal arrow is the forward motion, the coral arrow is the sideways motion caused by turning. Their sum is the white arrow.'},
+B:{t:'How steering enters the safety rule',d:'The shaded region shows every speed and turn rate the robot may use without getting too close to the obstacle. The gold dot is the command the safety filter picks: the allowed command closest to the wanted one.',l:'Look for: as the lookahead distance grows, the region tilts and opens, so the filter can steer instead of only slowing down.'},
+C:{t:'Same robot, with and without lookahead',d:'Both robots follow the same route and meet the same obstacle with the same rules. Only the lookahead distance differs: 0 m on the left, 0.6 m on the right.',l:'Look for: with no lookahead the robot stops in front of the obstacle. With lookahead it steers around it and keeps going.'}};
+const v=document.getElementById('v');
+function show(n){document.getElementById('t').textContent=C[n].t;document.getElementById('d').textContent=C[n].d;document.getElementById('l').textContent=C[n].l;}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');v.pause();v.src='media/anim_'+b.dataset.n+'.mp4';v.load();show(b.dataset.n);});
+show('A');
+</script></html>

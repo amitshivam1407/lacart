@@ -19,7 +19,7 @@ dl{display:grid;grid-template-columns:1fr auto;gap:5px 10px;margin:10px 0 0;font
 a{color:#0a6f66}
 </style>
 <header><h1>LACART · Play</h1><p>Change the lookahead and barrier parameters, then watch the robot, the obstacle and the path.</p></header>
-<nav id="tabs"><button data-m="appr" class="on">Single obstacle</button><button data-m="track1">Track 1</button><button data-m="eight">8-shape track</button></nav>
+<nav id="tabs"><button data-m="appr" class="on">Single obstacle</button><button data-m="cmp">Compare lookahead</button><button data-m="track1">Track 1</button><button data-m="eight">8-shape track</button></nav>
 <main>
 <section><h2 id="ttl"></h2><canvas id="sc"></canvas>
 <div class="row"><button class="b" id="play">Play</button><button class="b alt" id="rst">Reset</button><input type="range" id="tm" min="0" max="0" value="0" style="flex:1;min-width:140px"></div>
@@ -41,6 +41,8 @@ const SPEC={
  track1:{ttl:'Track 1 · full lap with 5 obstacles',p:[['ell','Lookahead ℓ (m)',0,0.9,0.01,0.1],['margin','Margin added to obstacle radius (m)',0,0.6,0.01,0.05],['alpha','CBF gain α (1/s)',0.5,12,0.1,6],['vref','Reference speed (m/s)',0.5,2,0.05,2],['wmax','Max |ω| (rad/s)',0.5,4,0.1,2.5]]},
 };
 SPEC.eight={...SPEC.track1,ttl:'8-shape track · full lap with 5 obstacles'};
+SPEC.cmp={ttl:'Compare four lookahead values on the same obstacle',p:[['l1','Lookahead ℓ₁ (m)',0,0.9,0.01,0],['l2','Lookahead ℓ₂ (m)',0,0.9,0.01,0.1],['l3','Lookahead ℓ₃ (m)',0,0.9,0.01,0.2],['l4','Lookahead ℓ₄ (m)',0,0.9,0.01,0.6],['oy','Obstacle lateral offset (m)',-0.7,0.7,0.01,0.3],['ox','Obstacle forward distance (m)',0.8,2,0.01,1.2],['R','Inflated radius Rs (m)',0.3,0.9,0.01,0.5],['delta','Maximum steering δ (°)',5,45,1,35],['alpha','CBF gain α (1/s)',0.2,5,0.1,1]]};
+const COL=['#7a8a93','#c44336','#0e8c80','#137db8'];
 let mode='appr',V={},S=null,pl=null,playing=false;
 // ---------- QP ----------
 function solve(rows,nom,w){let c=[nom];for(const[a,b,k]of rows){const den=a*a/w[0]+b*b/w[1];if(den>1e-12){const l=(k-a*nom[0]-b*nom[1])/den;c.push([nom[0]+l*a/w[0],nom[1]+l*b/w[1]]);}}
@@ -49,7 +51,7 @@ function solve(rows,nom,w){let c=[nom];for(const[a,b,k]of rows){const den=a*a/w[
 function clip(poly,a,b,c){const o=[];for(let i=0;i<poly.length;i++){const p=poly[i],q=poly[(i+1)%poly.length],f=a*p[0]+b*p[1]-c,g=a*q[0]+b*q[1]-c;if(f>=-1e-9)o.push(p);if((f>=0)!=(g>=0)){const t=f/(f-g);o.push([p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1])]);}}return o;}
 // ---------- scenario ----------
 function scenario(){
- if(mode==='appr'){const end=V.ox+2.5,px=[],py=[],yaw=[],kap=[];for(let x=0;x<=end+1e-9;x+=0.05){px.push(x);py.push(0);yaw.push(0);kap.push(0);}
+ if(mode==='appr'||mode==='cmp'){const end=V.ox+2.5,px=[],py=[],yaw=[],kap=[];for(let x=0;x<=end+1e-9;x+=0.05){px.push(x);py.push(0);yaw.push(0);kap.push(0);}
   return{px,py,yaw,kap,closed:false,obs:[[V.ox,V.oy,0.25]],R:[V.R],vref:1.1,vmax:1.5,wmax:2,kd:Math.tan(V.delta*Math.PI/180)/0.2,x0:0,y0:0,th0:0,T:15};}
  const d=D[mode];return{px:d.px,py:d.py,yaw:d.yaw,kap:d.kap,closed:true,obs:d.obs,R:d.obs.map(o=>o[2]+V.margin),vref:V.vref,vmax:2,wmax:V.wmax,kd:null,x0:2,y0:6,th0:Math.PI/2,T:50};}
 function nearest(sc,x,y,last,fw){const n=sc.px.length;let bi=last,bd=1e30;for(let o=-20;o<=fw;o++){let i=last+o;if(sc.closed)i=((i%n)+n)%n;else{if(i<0)i=0;if(i>n-1)i=n-1;}const dx=sc.px[i]-x,dy=sc.py[i]-y,d2=dx*dx+dy*dy;if(d2<bd){bd=d2;bi=i;}}return[bi,Math.sqrt(bd)];}
@@ -87,19 +89,21 @@ function simulate(){
  return{sc,tr,info};}
 // ---------- drawing ----------
 function setup(c,aspect){const dpr=window.devicePixelRatio||1,w=c.clientWidth;c.width=Math.round(w*dpr);c.height=Math.round(w*aspect*dpr);const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);return[g,w,w*aspect];}
-function bounds(){if(mode==='appr')return[-0.5,V.ox+2.7,-1.4,1.4];const d=D[mode];let a=[1e9,-1e9,1e9,-1e9];for(const L of d.outer)for(const[x,y]of L){a[0]=Math.min(a[0],x);a[1]=Math.max(a[1],x);a[2]=Math.min(a[2],y);a[3]=Math.max(a[3],y);}return[a[0]-.5,a[1]+.5,a[2]-.5,a[3]+.5];}
+function bounds(){if(mode==='appr'||mode==='cmp')return[-0.5,V.ox+2.7,-1.4,1.4];const d=D[mode];let a=[1e9,-1e9,1e9,-1e9];for(const L of d.outer)for(const[x,y]of L){a[0]=Math.min(a[0],x);a[1]=Math.max(a[1],x);a[2]=Math.min(a[2],y);a[3]=Math.max(a[3],y);}return[a[0]-.5,a[1]+.5,a[2]-.5,a[3]+.5];}
 function drawScene(){
  const b=bounds(),asp=(b[3]-b[2])/(b[1]-b[0]);const[g,W,H]=setup($('sc'),Math.min(Math.max(asp,.3),1.1));
  const sx=W/(b[1]-b[0]),sy=H/(b[3]-b[2]),sc_=Math.min(sx,sy);const X=x=>(x-b[0])*sc_,Y=y=>H-(y-b[2])*sc_;
  g.fillStyle='#fff';g.fillRect(0,0,W,H);
  const poly=(L,col,wd,dash)=>{g.strokeStyle=col;g.lineWidth=wd;g.setLineDash(dash||[]);g.beginPath();L.forEach(([x,y],i)=>i?g.lineTo(X(x),Y(y)):g.moveTo(X(x),Y(y)));g.stroke();g.setLineDash([]);};
  const sc=S.sc;
- if(mode!=='appr'){for(const L of D[mode].inner)poly(L,'#9baeb5',2);for(const L of D[mode].outer)poly(L,'#9baeb5',2);}
+ if(mode!=='appr'&&mode!=='cmp'){for(const L of D[mode].inner)poly(L,'#9baeb5',2);for(const L of D[mode].outer)poly(L,'#9baeb5',2);}
  poly(sc.px.map((x,i)=>[x,sc.py[i]]).concat(sc.closed?[[sc.px[0],sc.py[0]]]:[]),'#b7c7cc',1.5,[6,5]);
- if(mode==='appr'){g.fillStyle='#64747c';g.font='12px system-ui';for(let x=0;x<=b[1];x+=0.5)g.fillText(x.toFixed(1),X(x)-8,H-4);}
+ if(mode==='appr'||mode==='cmp'){g.fillStyle='#64747c';g.font='12px system-ui';for(let x=0;x<=b[1];x+=0.5)g.fillText(x.toFixed(1),X(x)-8,H-4);}
  sc.obs.forEach((o,k)=>{g.fillStyle='rgba(196,67,54,.13)';g.beginPath();g.arc(X(o[0]),Y(o[1]),sc.R[k]*sc_,0,7);g.fill();g.strokeStyle='#bc4235';g.setLineDash([6,4]);g.lineWidth=1.5;g.beginPath();g.arc(X(o[0]),Y(o[1]),sc.R[k]*sc_,0,7);g.stroke();g.setLineDash([]);g.fillStyle='#c44336';g.beginPath();g.arc(X(o[0]),Y(o[1]),o[2]*sc_,0,7);g.fill();});
- if(mode!=='appr'&&$('showref')&&$('showref').checked){const r=D[mode].ref;poly(r.x.map((x,i)=>[x,r.y[i]]),'#d9a21b',2.5,[8,4]);}
- const k=+$('tm').value,tr=S.tr;poly(tr.slice(0,k+1).map(p=>[p.x,p.y]),'#0e8c80',3);
+ if(mode!=='appr'&&mode!=='cmp'&&$('showref')&&$('showref').checked){const r=D[mode].ref;poly(r.x.map((x,i)=>[x,r.y[i]]),'#d9a21b',2.5,[8,4]);}
+ const k=+$('tm').value;
+ if(S.multi){S.multi.forEach((m,i)=>{const kk=Math.min(k,m.tr.length-1);poly(m.tr.slice(0,kk+1).map(p=>[p.x,p.y]),COL[i],i===S.best?4:2.5);const p=m.tr[kk];if(p){g.save();g.translate(X(p.x),Y(p.y));g.rotate(-p.th);g.fillStyle=COL[i];g.fillRect(-.15*sc_,-.1*sc_,.3*sc_,.2*sc_);g.restore();g.fillStyle=COL[i];g.beginPath();g.arc(X(p.x+m.ell*Math.cos(p.th)),Y(p.y+m.ell*Math.sin(p.th)),4,0,7);g.fill();}});g.fillStyle='#23313b';g.font='14px system-ui';g.fillText('Each colour is one lookahead value (see table)',8,18);return;}
+ const tr=S.tr;poly(tr.slice(0,k+1).map(p=>[p.x,p.y]),'#0e8c80',3);
  const p=tr[Math.min(k,tr.length-1)];if(p){g.save();g.translate(X(p.x),Y(p.y));g.rotate(-p.th);const L=(mode==='appr'?0.3:0.5)*sc_,Wd=(mode==='appr'?0.2:0.3)*sc_;g.fillStyle='#0b2029';g.fillRect(-L/2,-Wd/2,L,Wd);g.restore();
   g.strokeStyle='#0e8c80';g.lineWidth=2;g.beginPath();g.moveTo(X(p.x),Y(p.y));g.lineTo(X(p.pl[0]||p.x+V.ell*Math.cos(p.th)),Y(p.pl[1]||p.y+V.ell*Math.sin(p.th)));g.stroke();
   g.fillStyle='#0e8c80';g.beginPath();g.arc(X(p.x+V.ell*Math.cos(p.th)),Y(p.y+V.ell*Math.sin(p.th)),5,0,7);g.fill();}
@@ -117,16 +121,18 @@ function drawControls(){
  g.fillStyle='#182b33';g.beginPath();g.arc(A(r.vn),B(r.wn),5,0,7);g.fill();if(r.u){g.fillStyle='#0e8c80';g.beginPath();g.arc(A(r.u[0]),B(r.u[1]),7,0,7);g.fill();}
  g.fillStyle='#23313b';g.font='13px system-ui';g.fillText('v (m/s)',W/2-20,H-3);g.fillText('ω (rad/s)',46,12);}
 // ---------- UI ----------
-function build(){const sp=SPEC[mode];$('ttl').textContent=sp.ttl;V={};$('par').innerHTML=sp.p.map(([k,l,mn,mx,st,df])=>{V[k]=df;return`<label>${l} <output id="o_${k}"></output><input type="range" id="i_${k}" min="${mn}" max="${mx}" step="${st}" value="${df}"></label>`}).join('')+(mode!=='appr'?'<label style="font-size:14px"><input type="checkbox" id="showref" checked> Show Python reference run (gold)</label>':'');
+function build(){const sp=SPEC[mode];$('ttl').textContent=sp.ttl;V={};$('par').innerHTML=sp.p.map(([k,l,mn,mx,st,df])=>{V[k]=df;return`<label>${l} <output id="o_${k}"></output><input type="range" id="i_${k}" min="${mn}" max="${mx}" step="${st}" value="${df}"></label>`}).join('')+(mode!=='appr'&&mode!=='cmp'?'<label style="font-size:14px"><input type="checkbox" id="showref" checked> Show Python reference run (gold)</label>':'');
  sp.p.forEach(([k,l,mn,mx,st])=>{$('i_'+k).addEventListener('input',e=>{V[k]=+e.target.value;run();});});
  if($('showref'))$('showref').addEventListener('change',draw);
- $('ctlWrap').style.display=mode==='appr'?'block':'none';
- $('leg').innerHTML=mode==='appr'?'<span class="sw" style="background:#0e8c80"></span>driven path · dashed grey: reference line · solid red: obstacle · dashed red: inflated radius Rs · robot axle p and lookahead point pℓ':'<span class="sw" style="background:#0e8c80"></span>this page\'s run · <span class="sw" style="background:#d9a21b"></span>your Python run (ℓ=0.1, margin 0.05, α=6, CLF + track barriers) · grey: track limits';
+ V.ell=V.ell||0;$('ctlWrap').style.display=mode==='appr'?'block':'none';
+ $('leg').innerHTML=mode==='cmp'?'Four robots start together at the left and follow the dashed line. Coloured paths: one per lookahead ℓ. Red disc: obstacle with its inflated radius. Thick line: the best value by the rule below the table.':mode==='appr'?'<span class="sw" style="background:#0e8c80"></span>driven path · dashed grey: reference line · solid red: obstacle · dashed red: inflated radius Rs · robot axle p and lookahead point pℓ':'<span class="sw" style="background:#0e8c80"></span>this page\'s run · <span class="sw" style="background:#d9a21b"></span>your Python run (ℓ=0.1, margin 0.05, α=6, CLF + track barriers) · grey: track limits';
  run();}
 function labels(){for(const[k]of SPEC[mode].p){const e=$('o_'+k);if(e)e.value=(+V[k]).toFixed(k==='delta'?0:2);}}
-function run(){labels();S=simulate();const m=S.tr.length;$('tm').max=m-1;$('tm').value=m-1;stats();draw();}
-function draw(){drawScene();drawControls();}
-function stats(){const i=S.info,a=mode==='appr',ok=i.outcome==='lap'||i.outcome==='passed';
+function simAll(){const runs=['l1','l2','l3','l4'].map(k=>{V.ell=V[k];const r=simulate();return{ell:V[k],tr:r.tr,info:r.info,sc:r.sc};});let best=-1,bv=-1;runs.forEach((m,i)=>{if(m.info.outcome==='passed'&&!m.info.collide&&m.info.vminAfter>bv){bv=m.info.vminAfter;best=i;}});const L=Math.max(...runs.map(m=>m.tr.length));return{sc:runs[0].sc,tr:runs.reduce((a,m)=>m.tr.length>a.length?m.tr:a,runs[0].tr),info:runs[0].info,multi:runs,best};}
+function run(){labels();S=mode==='cmp'?simAll():simulate();const m=S.tr.length;$('tm').max=m-1;$('tm').value=m-1;stats();draw();}
+function draw(){drawScene();drawControls();if(S&&S.multi)cmpTable();}
+function cmpTable(){$('vals').style.display='block';const k=+$('tm').value;let h='<table style="width:100%;border-collapse:collapse;font-size:14px"><tr style="text-align:left;color:#566b74"><th>ℓ</th><th>v</th><th>ω</th><th>result</th></tr>';S.multi.forEach((m,i)=>{const p=m.tr[Math.min(k,m.tr.length-1)],inf=m.info,ok=inf.outcome==='passed';h+=`<tr style="border-top:1px solid #d1dfdf"><td><span class="sw" style="background:${COL[i]}"></span>${m.ell.toFixed(2)}${i===S.best?' ★':''}</td><td>${p.v.toFixed(2)}</td><td>${p.w.toFixed(2)}</td><td class="${ok&&!inf.collide?'good':'warn'}">${ok?'passes':'stalls'}</td></tr><tr style="color:#566b74;font-size:13px"><td colspan="4">${ok?`time ${inf.lap.toFixed(1)} s · min speed ${inf.vminAfter.toFixed(2)} m/s · closest to obstacle ${inf.minClr.toFixed(2)} m`:`stopped ${inf.minClr.toFixed(2)} m from the obstacle`}</td></tr>`;});h+='</table>';$('vals').innerHTML=h+'<p class="lg">v (m/s) and ω (rad/s) are the QP output at the selected time. ★ = best by this rule: among values that pass, the highest minimum speed. Another rule, for example more clearance, can pick another value.</p>';}
+function stats(){$('vals').style.display='';if(S.multi){$('st').innerHTML='';cmpTable();return;}const i=S.info,a=mode==='appr',ok=i.outcome==='lap'||i.outcome==='passed';
  let msg=a?(i.outcome==='passed'?'Passed the obstacle':i.outcome==='stalled'?'Stalled in front of the obstacle':'Not finished in 15 s'):(i.outcome==='lap'?'Lap completed':i.outcome==='stalled'?'Stalled (no progress)':'Not finished in 50 s');
  const cls=ok&&!i.collide?'good':'warn';$('st').innerHTML=`<span class="${cls}">${msg}${i.collide?' · axle inside obstacle':''}</span>`;
  const f=(x,d=2)=>isFinite(x)&&Math.abs(x)<1e8?x.toFixed(d):'—';
